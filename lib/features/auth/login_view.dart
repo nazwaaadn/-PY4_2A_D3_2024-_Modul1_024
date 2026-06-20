@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:logbook_app_001/features/auth/login_controller.dart';
-import 'package:logbook_app_001/features/alert_helper.dart';
-import 'package:logbook_app_001/features/logbook/log_view.dart';
+import 'package:logbook_app_024/features/auth/login_controller.dart';
+import 'package:logbook_app_024/features/alert_helper.dart';
+import 'package:logbook_app_024/features/logbook/log_view.dart';
 import 'dart:async';
 
 class LoginView extends StatefulWidget {
@@ -46,9 +46,8 @@ class _LoginViewState extends State<LoginView> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => LogView(
-            currentUser: _controller.getUserData(user),
-          ),
+          builder: (context) =>
+              LogView(currentUser: _controller.getUserData(user)),
         ),
       );
     } else {
@@ -112,7 +111,11 @@ class _LoginViewState extends State<LoginView> {
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
-                SizedBox(height: (!widget.fromLogout && Navigator.canPop(context)) ? 20 : 60),
+                SizedBox(
+                  height: (!widget.fromLogout && Navigator.canPop(context))
+                      ? 20
+                      : 60,
+                ),
                 // Logo Section
                 Hero(
                   tag: 'logo',

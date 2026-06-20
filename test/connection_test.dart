@@ -1,24 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:logbook_app_001/services/mongo_service.dart';
-import 'package:logbook_app_001/helpers/log_helper.dart';
-
+import 'package:logbook_app_024/services/mongo_service.dart';
+import 'package:logbook_app_024/helpers/log_helper.dart';
 
 void main() {
   const String sourceFile = "connection_test.dart";
-
 
   setUpAll(() async {
     // Memuat env sekali di awal untuk semua test
     await dotenv.load(fileName: ".env");
   });
 
-
   test(
     'Memastikan koneksi ke MongoDB Atlas berhasil via MongoService',
     () async {
       final mongoService = MongoService();
-
 
       // Memanfaatkan LogHelper baru yang sudah pakai dev.log dan print berwarna
       await LogHelper.writeLog(
@@ -26,15 +22,12 @@ void main() {
         source: sourceFile,
       );
 
-
       try {
         // Mengetes koneksi
         await mongoService.connect();
 
-
         // Ekspektasi: URI tidak null dan koneksi berhasil
         expect(dotenv.env['MONGODB_URI'], isNotNull);
-
 
         await LogHelper.writeLog(
           "SUCCESS: Koneksi Atlas Terverifikasi",

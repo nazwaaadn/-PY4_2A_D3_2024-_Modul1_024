@@ -1,7 +1,7 @@
 import 'package:mongo_dart/mongo_dart.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:logbook_app_001/features/logbook/models/log_model.dart';
-import 'package:logbook_app_001/helpers/log_helper.dart';
+import 'package:logbook_app_024/features/logbook/models/log_model.dart';
+import 'package:logbook_app_024/helpers/log_helper.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 class MongoService {

@@ -5,11 +5,42 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mongo_dart/mongo_dart.dart';
-import 'package:logbook_app_001/features/logbook/models/log_model.dart';
-import 'package:logbook_app_001/services/mongo_service.dart';
-import 'package:logbook_app_001/helpers/log_helper.dart';
+import 'package:logbook_app_024/features/logbook/models/log_model.dart';
+import 'package:logbook_app_024/services/mongo_service.dart';
+import 'package:logbook_app_024/helpers/log_helper.dart';
+
+abstract class CloudLogService {
+  Future<List<LogModel>> getLogs(String teamId);
+  Future<void> insertLog(LogModel log);
+  Future<void> updateLog(LogModel log);
+  Future<void> deleteLog(String id);
+  Future<void> upsertLog(LogModel log);
+}
+
+class MongoCloudLogService implements CloudLogService {
+  final MongoService _mongo;
+
+  MongoCloudLogService([MongoService? mongo])
+    : _mongo = mongo ?? MongoService();
+
+  @override
+  Future<List<LogModel>> getLogs(String teamId) => _mongo.getLogs(teamId);
+
+  @override
+  Future<void> insertLog(LogModel log) => _mongo.insertLog(log);
+
+  @override
+  Future<void> updateLog(LogModel log) => _mongo.updateLog(log);
+
+  @override
+  Future<void> deleteLog(String id) => _mongo.deleteLog(id);
+
+  @override
+  Future<void> upsertLog(LogModel log) => _mongo.upsertLog(log);
+}
 
 class LogController {
+  final CloudLogService _cloudService;
   final ValueNotifier<List<LogModel>> logsNotifier =
       ValueNotifier<List<LogModel>>([]);
 
@@ -28,7 +59,8 @@ class LogController {
   List<LogModel> get logs => logsNotifier.value;
 
   // --- KONSTRUKTOR ---
-  LogController();
+  LogController({CloudLogService? cloudService})
+    : _cloudService = cloudService ?? MongoCloudLogService();
 
   /// 1. LOAD DATA (Offline-First Strategy)
   Future<void> loadLogs(String teamId) async {
@@ -39,29 +71,24 @@ class LogController {
 
     // Langkah 2: Sync dari Cloud (Background)
     try {
-      final cloudData = await MongoService().getLogs(teamId);
+      final cloudData = await _cloudService.getLogs(teamId);
 
-      // Ambil ID log yang masih pending (belum terkirim ke Atlas)
       final prefs = await SharedPreferences.getInstance();
       final pendingIds = prefs.getStringList(_pendingKey) ?? [];
       final pendingLogs = box.values
           .where((l) => l.id != null && pendingIds.contains(l.id))
           .toList();
 
-      // Update Hive: data cloud + log offline yang masih pending
       await box.clear();
       await box.addAll(cloudData);
       for (final pending in pendingLogs) {
-        // Hanya tambahkan jika belum ada di cloudData (benar-benar belum tersinkron)
         final alreadySynced = cloudData.any((c) => c.id == pending.id);
         if (!alreadySynced) await box.add(pending);
       }
 
-      // Update UI: gabungkan cloud + pending
       final allLocal = box.values.where((l) => l.teamId == teamId).toList();
       logsNotifier.value = allLocal;
 
-      // Jika masih ada pending, status belum sinkron penuh.
       isOnlineNotifier.value = pendingIds.isEmpty;
 
       await LogHelper.writeLog(
@@ -69,7 +96,6 @@ class LogController {
         level: 2,
       );
 
-      // Retry pending setiap kali load/refresh saat cloud bisa diakses.
       await _syncPending(teamId);
     } catch (e) {
       isOnlineNotifier.value = false;
@@ -80,7 +106,6 @@ class LogController {
     }
   }
 
-  /// 2. ADD DATA (Instant Local + Background Cloud)
   Future<void> addLog(
     String title,
     String desc,
@@ -100,20 +125,17 @@ class LogController {
       category: category,
     );
 
-    // ACTION 1: Simpan ke Hive (Instan)
     final box = Hive.box<LogModel>('offline_logs');
     await box.add(newLog);
     logsNotifier.value = [...logsNotifier.value, newLog];
 
-    // ACTION 2: Kirim ke MongoDB Atlas (Background)
     try {
-      await MongoService().insertLog(newLog);
+      await _cloudService.insertLog(newLog);
       await LogHelper.writeLog(
         "SUCCESS: Data tersinkron ke Cloud",
         source: "log_controller.dart",
       );
     } catch (e) {
-      // Simpan ID ke antrian pending agar disinkronisasi saat online kembali
       final prefs = await SharedPreferences.getInstance();
       final pending = prefs.getStringList(_pendingKey) ?? [];
       if (!pending.contains(newLog.id)) pending.add(newLog.id!);
@@ -126,7 +148,6 @@ class LogController {
     }
   }
 
-  // 2. Memperbarui data di Cloud (HOTS: Sinkronisasi Terjamin)
   Future<void> updateLog(
     int index,
     String newTitle,
@@ -149,10 +170,8 @@ class LogController {
     );
 
     try {
-      // 1. Jalankan update di MongoService (Tunggu konfirmasi Cloud)
-      await MongoService().updateLog(updatedLog);
+      await _cloudService.updateLog(updatedLog);
 
-      // 2. Jika sukses, baru perbarui state lokal
       currentLogs[index] = updatedLog;
       logsNotifier.value = currentLogs;
       await _syncHive();
@@ -168,11 +187,9 @@ class LogController {
         source: "log_controller.dart",
         level: 1,
       );
-      // Data di UI tidak berubah jika proses di Cloud gagal
     }
   }
 
-  // 3. Menghapus data dari Cloud (HOTS: Sinkronisasi Terjamin)
   Future<void> removeLog(int index) async {
     final currentLogs = List<LogModel>.from(logsNotifier.value);
     final targetLog = currentLogs[index];
@@ -184,10 +201,8 @@ class LogController {
         );
       }
 
-      // 1. Hapus data di MongoDB Atlas (Tunggu konfirmasi Cloud)
-      await MongoService().deleteLog(targetLog.id!);
+      await _cloudService.deleteLog(targetLog.id!);
 
-      // 2. Jika sukses, baru hapus dari state lokal
       currentLogs.removeAt(index);
       logsNotifier.value = currentLogs;
       await _syncHive();
@@ -206,36 +221,27 @@ class LogController {
     }
   }
 
-  // --- BARU: FUNGSI PERSISTENCE (SINKRONISASI JSON) ---
-
-  // Fungsi untuk menyimpan seluruh List ke penyimpanan lokal
   Future<void> saveToDisk() async {
     final prefs = await SharedPreferences.getInstance();
-    // Mengubah List of Object -> List of Map -> String JSON
     final String encodedData = jsonEncode(
       logsNotifier.value.map((log) => log.toMap()).toList(),
     );
     await prefs.setString(_storageKey, encodedData);
   }
 
-  // Ganti pemanggilan SharedPreferences menjadi MongoService
   Future<void> loadFromDisk([String teamId = '']) async {
     // Mengambil dari Cloud, bukan lokal
-    final cloudData = await MongoService().getLogs(teamId);
+    final cloudData = await _cloudService.getLogs(teamId);
     logsNotifier.value = cloudData;
   }
 
   void searchLog(String text) {}
 
-  // ─── Connectivity Watch ─────────────────────────────────────────────────────
-
-  /// Mulai memantau perubahan koneksi. Panggil dari LogView.initState().
   void startConnectivityWatch(String teamId) {
     _connectivitySub?.cancel();
     _connectivitySub = Connectivity().onConnectivityChanged.listen((
       results,
     ) async {
-      // connectivity_plus v7 mengembalikan List<ConnectivityResult>
       final isOnline = results.any((r) => r != ConnectivityResult.none);
       isOnlineNotifier.value = isOnline;
       if (isOnline) {
@@ -253,13 +259,11 @@ class LogController {
     });
   }
 
-  /// Hentikan listener koneksi. Panggil dari LogView.dispose().
   void cancelWatch() {
     _connectivitySub?.cancel();
     _connectivitySub = null;
   }
 
-  /// Kirim semua log yang tertunda ke Atlas menggunakan upsert (anti-duplikasi).
   Future<void> _syncPending(String teamId) async {
     final prefs = await SharedPreferences.getInstance();
     final pendingIds = prefs.getStringList(_pendingKey) ?? [];
@@ -282,7 +286,7 @@ class LogController {
       }
       try {
         // upsertLog mencegah duplikasi: insert jika baru, replace jika sudah ada
-        await MongoService().upsertLog(log);
+        await _cloudService.upsertLog(log);
         synced.add(id);
       } catch (e) {
         await LogHelper.writeLog(
@@ -309,6 +313,11 @@ class LogController {
 
     // Tidak ada yang berhasil disinkronkan.
     isOnlineNotifier.value = false;
+  }
+
+  /// Trigger manual sinkronisasi pending log.
+  Future<void> syncPendingNow(String teamId) async {
+    await _syncPending(teamId);
   }
 
   // ─── Hive & Cloud Sync ──────────────────────────────────────────────────────

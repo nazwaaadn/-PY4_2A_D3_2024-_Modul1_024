@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:logbook_app_001/features/auth/login_view.dart';
+import 'package:logbook_app_024/features/auth/login_view.dart';
 import 'log_controller.dart';
-import 'package:logbook_app_001/features/logbook/models/log_model.dart';
-import 'package:logbook_app_001/helpers/date_helper.dart';
-import 'package:logbook_app_001/services/access_control_service.dart';
-import 'package:logbook_app_001/features/logbook/log_editor_page.dart';
+import 'package:logbook_app_024/features/logbook/models/log_model.dart';
+import 'package:logbook_app_024/helpers/date_helper.dart';
+import 'package:logbook_app_024/services/access_control_service.dart';
+import 'package:logbook_app_024/features/logbook/log_editor_page.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:logbook_app_024/features/vision/vision_view.dart';
 
 class LogView extends StatefulWidget {
   final dynamic currentUser;
@@ -222,6 +223,22 @@ class _LogViewState extends State<LogView> {
                                   ? Colors.greenAccent
                                   : Colors.orangeAccent,
                               size: 20,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: _openCameraView,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 18,
                             ),
                           ),
                         ),
@@ -754,6 +771,13 @@ class _LogViewState extends State<LogView> {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
+    );
+  }
+
+  void _openCameraView() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const VisionView()),
     );
   }
 

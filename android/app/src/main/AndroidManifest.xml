@@ -1,6 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- TASK 2: Camera & Hardware Permissions -->
+    <!-- Camera permission for vision module -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Flashlight permission for torch control -->
+    <uses-permission android:name="android.permission.FLASHLIGHT" />
+    <!-- Internet for MongoDB integration -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Storage access for log files -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
     <application
-        android:label="logbook_app_001"
+        android:label="modul6_pcd"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

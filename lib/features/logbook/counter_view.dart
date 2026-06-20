@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'counter_controller.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
-import 'package:logbook_app_001/features/auth/login_view.dart';
+import 'package:logbook_app_024/features/auth/login_view.dart';
+import 'package:logbook_app_024/features/vision/vision_view.dart';
 
 class CounterView extends StatefulWidget {
   final String username;
@@ -93,6 +94,11 @@ class _CounterViewState extends State<CounterView> {
           backgroundColor: primaryNavy,
           foregroundColor: Colors.white,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.camera_alt_rounded),
+              tooltip: 'Buka Kamera',
+              onPressed: _openCameraView,
+            ),
             IconButton(
               icon: const Icon(Icons.logout_rounded),
               onPressed: _showLogoutDialog,
@@ -345,6 +351,13 @@ class _CounterViewState extends State<CounterView> {
     );
   }
 
+  void _openCameraView() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const VisionView()),
+    );
+  }
+
   void _showLogoutDialog() {
     showDialog(
       context: context,
@@ -366,7 +379,9 @@ class _CounterViewState extends State<CounterView> {
               Navigator.pop(context);
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => const LoginView(fromLogout: true)),
+                MaterialPageRoute(
+                  builder: (context) => const LoginView(fromLogout: true),
+                ),
                 (route) => false,
               );
             },

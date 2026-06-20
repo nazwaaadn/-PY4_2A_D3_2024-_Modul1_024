@@ -1,4 +1,4 @@
-package com.example.logbook_app_001
+package com.example.modul6_pcd
 
 import io.flutter.embedding.android.FlutterActivity
 

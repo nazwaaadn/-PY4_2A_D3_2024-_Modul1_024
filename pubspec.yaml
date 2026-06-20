@@ -1,4 +1,4 @@
-name: logbook_app_001
+name: logbook_app_024
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -46,6 +46,10 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   flutter_markdown: ^0.7.4
+  camera: ^0.11.2
+  permission_handler: ^12.0.1
+  image: ^4.2.0
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
